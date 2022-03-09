@@ -1,11 +1,13 @@
 module CPEL.OpResolver where
 
+import Prelude hiding (sequence)
+
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Foldable
-import Control.Monad
+import Control.Monad hiding (sequence)
 import Control.Applicative
-import Data.Traversable
+import Data.Traversable hiding (sequence)
 import Data.Maybe
 import Data.Either.Combinators (fromRight')
 import Control.Arrow
@@ -50,17 +52,18 @@ chkSyn = undefined
 type Env = Trie.Trie NamePiece [S.Set Name]
 data OpFrame = OpFrame
 	{ _ofrHead :: Spanned NamePart
-	, _ofrParts :: List0 (Spanned ChkTac, Spanned NamePart)
-	, _ofrRest :: Either NamePart (List0 (Spanned ChkTac))
+	, _ofrParts :: List0 (Spanned (ElabM ChkTac), Spanned NamePart)
+	, _ofrRest :: Either NamePart (List0 (Spanned (ElabM ChkTac)))
 	, _ofrIndex :: Maybe (Spanned Idx)
-	} deriving (Show)
-type Frame = Either OpFrame (Spanned SynTac, List0 (Spanned ChkTac))
+	}
+type ExpFrame = (Spanned (ElabM SynTac), List0 (Spanned (ElabM ChkTac)))
+type Frame = Either OpFrame ExpFrame
 type Stack = List0 Frame
 data Slice = Slice
 	{ _slExpName :: Maybe Name
-	, _slExp :: Spanned SynTac
+	, _slExp :: Spanned (ElabM SynTac)
 	, _slStack :: Stack
-	} deriving (Show)
+	}
 
 ofrName :: OpFrame -> Name
 ofrName OpFrame{..} = concat
@@ -80,10 +83,15 @@ allows :: Env -> Name -> Int -> Name -> Bool
 allows env outer i inner =
 	S.member inner $ (!! i) $ fromJust $ Trie.lookup outer env
 
-synAps :: Spanned SynTac -> List0 (Spanned ChkTac) -> Spanned SynTac
-synAps = foldr \a@(Span _ e, _) f@(Span s _, _) -> (Span s e, synAp f a)
+synAps ::
+	Applicative f =>
+	Spanned (f SynTac) ->
+	List0 (Spanned (f ChkTac)) ->
+	Spanned (f SynTac)
+synAps = foldr \a@(Span _ e, _) f@(Span s _, _) ->
+	(Span s e, liftA2 synAp (sequenceA f) (sequenceA a))
 
-synOpFr :: OpFrame -> Spanned SynTac
+synOpFr :: OpFrame -> Spanned (ElabM SynTac)
 synOpFr OpFrame{..} = synAps core $ fromRight' _ofrRest
 	where
 		core = (
@@ -92,10 +100,13 @@ synOpFr OpFrame{..} = synAps core $ fromRight' _ofrRest
 					case _ofrParts of
 						[] -> spanEnd $ fst _ofrHead
 						parts | (_, (Span _ e, _)) <- last parts -> e,
-				synOp _ofrHead _ofrParts _ofrIndex
+				do
+					parts <- for _ofrParts \((span, e), part) ->
+						fmap ((, part) . (span, )) e
+					pure $ synOp _ofrHead parts _ofrIndex
 			)
 
-synFrame :: Frame -> Spanned SynTac
+synFrame :: Frame -> Spanned (ElabM SynTac)
 synFrame = either synOpFr (uncurry synAps)
 
 startSlice :: Stack -> Maybe Slice
@@ -125,7 +136,7 @@ extendSlice env Slice
 		{ _slExpName = Just $ ofrName ofr
 		, _slExp = synOpFr $ ofr
 				{ _ofrParts =
-						(second chkSyn e, (Span pos pos, [""])):_ofrParts ofr
+						(second (fmap chkSyn) e, (Span pos pos, [""])):_ofrParts ofr
 				, _ofrRest = Right [] }
 		, _slStack = stack }
 extendSlice env Slice
@@ -134,7 +145,7 @@ extendSlice env Slice
 	= Just Slice
 		{ _slExpName = ofrSliceName ofr
 		, _slExp = synOpFr $ ofr
-				{ _ofrRest = Right $ second chkSyn e:args }
+				{ _ofrRest = Right $ second (fmap chkSyn) e:args }
 		, _slStack = stack }
 extendSlice env Slice
 	{ _slExp = e
@@ -181,7 +192,7 @@ processOperand stack op = getPrecedence >>=
 						(a, b) -> pure $ a <|> b
 					pure $ pure $ (:stack) $ Left $ ofr
 						{ _ofrParts = (:_ofrParts ofr) $
-								(second chkSyn (_slExp sl), (span, part))
+								(second (fmap chkSyn) (_slExp sl), (span, part))
 						, _ofrRest = case drop (length part) rest of
 								[] -> Right []
 								rest' -> Left rest'
@@ -196,7 +207,7 @@ processOperand stack op = getPrecedence >>=
 				let pos = spanStart $ fst $ _slExp sl
 				pure $ (:stack) $ Left OpFrame
 					{ _ofrHead = (Span pos pos, [""])
-					, _ofrParts = [(second chkSyn (_slExp sl), part)]
+					, _ofrParts = [(second (fmap chkSyn) (_slExp sl), part)]
 					, _ofrRest = case rest of
 							[] -> Right []
 							rest -> Left rest
@@ -213,19 +224,19 @@ processOperand stack op = getPrecedence >>=
 				pure $ pure $ Right (f, (span, chkExp e):args):stack
 		]
 
-synExp :: CST.Exp -> SynTac
-synExp (CST.EOp ops) = Tac "op" $ do
+synExp :: CST.Exp -> ElabM SynTac
+synExp (CST.EOp ops) = do
 	stacks <- foldl
 		(\stacks op ->
 			stacks >>= fmap join . sequenceA . fmap (flip processOperand op))
 		(pure []) ops
 	env <- getPrecedence
-	let exps = do
+	exps <- sequenceA do
 		Slice { _slExp = e, _slStack = [] } <- mapMaybe (lastSlice env) stacks
-		pure e
+		pure $ sequenceA e
 	case exps of
-		[e] -> _tacImpl $ snd e
+		[e] -> pure $ snd e
 		_ -> fail $ show exps
 
-chkExp :: CST.Exp -> ChkTac
+chkExp :: CST.Exp -> ElabM ChkTac
 chkExp = error "TODO"
