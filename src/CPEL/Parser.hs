@@ -2,18 +2,17 @@ module CPEL.Parser where
 
 import Prelude hiding (exp)
 
-import FlatParse.Stateful qualified as FP
-import FlatParse.Stateful ((<|>))
+import Control.Arrow
+import Control.Monad
+import Data.Char qualified as C
+import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Char qualified as C
-import Control.Monad (when, join)
-import Data.Maybe (maybeToList)
-import Control.Arrow (second)
+import FlatParse.Stateful ((<|>))
+import FlatParse.Stateful qualified as FP
 
-import Debug.Trace qualified as Trace
-
-import CPEL.CST1
+import CPEL.Types
+import CPEL.CST
 
 data Error = Error {
 	errStartPos :: FP.Pos,
@@ -127,7 +126,7 @@ clauseBlock st entry =
 			}
 
 isIdentChar :: Char -> Bool
-isIdentChar c = not $ C.isSpace c || any (c ==) "(){}.;"
+isIdentChar c = not $ C.isSpace c || any (c ==) ("(){}.;" :: String)
 
 identEnd :: Parser ()
 identEnd = FP.fails $ FP.satisfy_ isIdentChar
@@ -135,7 +134,7 @@ identEnd = FP.fails $ FP.satisfy_ isIdentChar
 ident :: Parser Name
 ident = do
 	FP.fails $(FP.string "--")
-	fmap T.decodeUtf8 $ FP.byteStringOf $
+	fmap (T.split (== '_') . T.decodeUtf8) $ FP.byteStringOf $
 		FP.spanned (FP.some_ $ FP.satisfy_ isIdentChar) $ \() span ->
 		FP.fails $ FP.inSpan span do
 			$(FP.switch [| case _ of

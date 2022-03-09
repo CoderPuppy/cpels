@@ -2,10 +2,10 @@ module CPEL.Trie where
 
 import Prelude hiding (null)
 
-import Data.Map qualified as M
-import Data.Maybe (isNothing, maybeToList)
-import Data.Functor.Identity
 import Data.Functor.Const
+import Data.Functor.Identity
+import Data.Map qualified as M
+import Data.Maybe
 
 data Trie k v = Trie {
 	root :: Maybe v,

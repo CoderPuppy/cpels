@@ -2,21 +2,21 @@ module CPEL.OpResolver where
 
 import Prelude hiding (sequence)
 
-import Data.Map qualified as M
-import Data.Set qualified as S
-import Data.Foldable
-import Control.Monad hiding (sequence)
 import Control.Applicative
-import Data.Traversable hiding (sequence)
-import Data.Maybe
-import Data.Either.Combinators (fromRight')
 import Control.Arrow
-import Control.Monad.Trans.Reader (ReaderT(ReaderT, runReaderT))
+import Control.Monad hiding (sequence)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Reader (ReaderT(ReaderT, runReaderT))
+import Data.Either.Combinators (fromRight')
+import Data.Foldable
 import Data.List
+import Data.Map qualified as M
+import Data.Maybe
+import Data.Set qualified as S
+import Data.Traversable hiding (sequence)
 
 import CPEL.Types
-import CPEL.CST1 qualified as CST
+import CPEL.CST qualified as CST
 import CPEL.Trie qualified as Trie
 
 data ElabM a

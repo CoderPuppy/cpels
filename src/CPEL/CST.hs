@@ -1,6 +1,6 @@
-module CPEL.CST1 where
+module CPEL.CST where
 
-import CPEL.Types (Spanned, Name, Idx)
+import CPEL.Types
 
 data Var = Var {
 	_varName :: Spanned Name,
