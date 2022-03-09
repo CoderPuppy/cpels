@@ -1,0 +1,84 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 9586b4aa111f7ece7dffb9f6356884bac77838fada77b6bd5a96590015da1d5d
+
+name:           CPELS
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/CoderPuppy/CPELS#readme>
+homepage:       https://github.com/CoderPuppy/cpels#readme
+bug-reports:    https://github.com/CoderPuppy/cpels/issues
+author:         CoderPuppy
+maintainer:     coderpup@gmail.com
+copyright:      2022 CoderPuppy
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/CoderPuppy/cpels
+
+library
+  exposed-modules:
+      CPEL.CST1
+      CPEL.CST2
+      CPEL.OpResolver
+      CPEL.Parser
+      CPEL.Test1
+      CPEL.Trie
+      CPEL.Types
+  other-modules:
+      Paths_CPELS
+  hs-source-dirs:
+      src
+  default-extensions: ApplicativeDo BangPatterns BinaryLiterals BlockArguments ConstrainedClassMethods ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies DerivingVia DisambiguateRecordFields EmptyCase EmptyDataDecls EmptyDataDeriving ExistentialQuantification ExplicitForAll ExplicitNamespaces FunctionalDependencies GADTSyntax GADTs GeneralizedNewtypeDeriving ImplicitParams ImportQualifiedPost ImpredicativeTypes KindSignatures LambdaCase LiberalTypeSynonyms MagicHash MonoLocalBinds MultiParamTypeClasses MultiWayIf NamedFieldPuns NamedWildCards NegativeLiterals NumDecimals NumericUnderscores OverloadedLabels OverloadedStrings PartialTypeSignatures PatternGuards PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RecordWildCards RoleAnnotations ScopedTypeVariables StandaloneDeriving TemplateHaskell TemplateHaskellQuotes TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeInType TypeOperators UnboxedSums UnboxedTuples UnliftedNewtypes ViewPatterns
+  ghc-options: -Wno-tabs
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , flatparse
+    , text
+    , transformers
+  default-language: Haskell2010
+
+executable CPELS-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_CPELS
+  hs-source-dirs:
+      app
+  default-extensions: ApplicativeDo BangPatterns BinaryLiterals BlockArguments ConstrainedClassMethods ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies DerivingVia DisambiguateRecordFields EmptyCase EmptyDataDecls EmptyDataDeriving ExistentialQuantification ExplicitForAll ExplicitNamespaces FunctionalDependencies GADTSyntax GADTs GeneralizedNewtypeDeriving ImplicitParams ImportQualifiedPost ImpredicativeTypes KindSignatures LambdaCase LiberalTypeSynonyms MagicHash MonoLocalBinds MultiParamTypeClasses MultiWayIf NamedFieldPuns NamedWildCards NegativeLiterals NumDecimals NumericUnderscores OverloadedLabels OverloadedStrings PartialTypeSignatures PatternGuards PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RecordWildCards RoleAnnotations ScopedTypeVariables StandaloneDeriving TemplateHaskell TemplateHaskellQuotes TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeInType TypeOperators UnboxedSums UnboxedTuples UnliftedNewtypes ViewPatterns
+  ghc-options: -Wno-tabs -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      CPELS
+    , base >=4.7 && <5
+    , containers
+    , flatparse
+    , text
+    , transformers
+  default-language: Haskell2010
+
+test-suite CPELS-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_CPELS
+  hs-source-dirs:
+      test
+  default-extensions: ApplicativeDo BangPatterns BinaryLiterals BlockArguments ConstrainedClassMethods ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies DerivingVia DisambiguateRecordFields EmptyCase EmptyDataDecls EmptyDataDeriving ExistentialQuantification ExplicitForAll ExplicitNamespaces FunctionalDependencies GADTSyntax GADTs GeneralizedNewtypeDeriving ImplicitParams ImportQualifiedPost ImpredicativeTypes KindSignatures LambdaCase LiberalTypeSynonyms MagicHash MonoLocalBinds MultiParamTypeClasses MultiWayIf NamedFieldPuns NamedWildCards NegativeLiterals NumDecimals NumericUnderscores OverloadedLabels OverloadedStrings PartialTypeSignatures PatternGuards PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RecordWildCards RoleAnnotations ScopedTypeVariables StandaloneDeriving TemplateHaskell TemplateHaskellQuotes TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeInType TypeOperators UnboxedSums UnboxedTuples UnliftedNewtypes ViewPatterns
+  ghc-options: -Wno-tabs -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      CPELS
+    , base >=4.7 && <5
+    , containers
+    , flatparse
+    , text
+    , transformers
+  default-language: Haskell2010

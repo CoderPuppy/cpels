@@ -1,0 +1,129 @@
+name:                CPELS
+version:             0.1.0.0
+github:              "CoderPuppy/cpels"
+license:             BSD3
+author:              "CoderPuppy"
+maintainer:          "coderpup@gmail.com"
+copyright:           "2022 CoderPuppy"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/CoderPuppy/CPELS#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- text
+- containers
+- transformers
+# - these
+- flatparse
+
+ghc-options:
+- -Wno-tabs
+
+default-extensions:
+  - ApplicativeDo
+  - BangPatterns
+  - BinaryLiterals
+  - BlockArguments
+  - ConstrainedClassMethods
+  - ConstraintKinds
+  - DataKinds
+  - DefaultSignatures
+  - DeriveAnyClass
+  - DeriveDataTypeable
+  - DeriveFoldable
+  - DeriveFunctor
+  - DeriveGeneric
+  - DeriveLift
+  - DeriveTraversable
+  - DerivingStrategies
+  - DerivingVia
+  - DisambiguateRecordFields
+  - EmptyCase
+  - EmptyDataDecls
+  - EmptyDataDeriving
+  - ExistentialQuantification
+  - ExplicitForAll
+  - ExplicitNamespaces
+  - FunctionalDependencies
+  - GADTSyntax
+  - GADTs
+  - GeneralizedNewtypeDeriving
+  - ImplicitParams
+  - ImportQualifiedPost
+  - ImpredicativeTypes
+  - KindSignatures
+  - LambdaCase
+  # - LexicalNegation
+  - LiberalTypeSynonyms
+  # - LinearTypes
+  - MagicHash
+  - MonoLocalBinds
+  - MultiParamTypeClasses
+  - MultiWayIf
+  - NamedFieldPuns
+  - NamedWildCards
+  - NegativeLiterals
+  - NumDecimals
+  - NumericUnderscores
+  - OverloadedLabels
+  # - OverloadedRecordDot
+  - OverloadedStrings
+  - PartialTypeSignatures
+  - PatternGuards
+  - PatternSynonyms
+  - PolyKinds
+  - QuantifiedConstraints
+  - RankNTypes
+  - RecordWildCards
+  - RoleAnnotations
+  - ScopedTypeVariables
+  - StandaloneDeriving
+  - TemplateHaskell
+  - TemplateHaskellQuotes
+  - TupleSections
+  - TypeApplications
+  - TypeFamilies
+  - TypeFamilyDependencies
+  - TypeInType
+  - TypeOperators
+  - UnboxedSums
+  - UnboxedTuples
+  # - UnliftedDatatypes
+  - UnliftedNewtypes
+  - ViewPatterns
+
+library:
+  source-dirs: src
+
+executables:
+  CPELS-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - CPELS
+
+tests:
+  CPELS-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - CPELS
