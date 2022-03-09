@@ -24,6 +24,7 @@ dependencies:
 - text
 - containers
 - transformers
+- either
 # - these
 - flatparse
 

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9586b4aa111f7ece7dffb9f6356884bac77838fada77b6bd5a96590015da1d5d
+-- hash: cbc03f2bc3c35e66b5f26c05a3ee6d2d3743c40068c42706f4eb6298851661cc
 
 name:           CPELS
 version:        0.1.0.0
@@ -43,6 +43,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , either
     , flatparse
     , text
     , transformers
@@ -60,6 +61,7 @@ executable CPELS-exe
       CPELS
     , base >=4.7 && <5
     , containers
+    , either
     , flatparse
     , text
     , transformers
@@ -78,6 +80,7 @@ test-suite CPELS-test
       CPELS
     , base >=4.7 && <5
     , containers
+    , either
     , flatparse
     , text
     , transformers

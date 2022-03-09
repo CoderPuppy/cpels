@@ -35,7 +35,7 @@ data E2
 type SynTac = E2
 type ChkTac = E2
 
-type Env = Trie.Trie T.Text [S.Set (List2 T.Text)]
+type Env = Trie.Trie T.Text (List0 (S.Set (List2 T.Text)))
 
 data OpFrame = OpFrame {
 	_ofrHead :: List1 T.Text,
@@ -83,7 +83,7 @@ close env = runKleisli $
 		work
 			( (Just nameE, e)
 			, (Left ofr@OpFrame{ _ofrRest = Left [""], .. }:stack))
-			| allowedIn env nameE nameOp (length nameOp - 2)
+			| not $ allowedIn env nameE nameOp (length nameOp - 2)
 			= Nothing
 			where nameOp = ofrName ofr
 		work
