@@ -13,6 +13,8 @@ type NamePiece = T.Text
 type NamePart = List1 NamePiece
 type Name = NamePart
 type Idx = Int
+type Lvl = Int
+type MetaVar = Int
 
 spanStart :: Span -> Pos
 spanStart (Span s _) = s
