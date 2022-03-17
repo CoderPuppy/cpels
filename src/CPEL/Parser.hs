@@ -142,7 +142,7 @@ ident = do
 				"let" -> pure ()
 				"in" -> pure ()
 				"λ" -> pure ()
-				"rec" -> pure ()
+				"sig" -> pure ()
 				":" -> pure ()
 				"=" -> pure ()
 				"open" -> pure ()
@@ -273,13 +273,13 @@ expLam st = do
 		$ "expected lambda body (a block of clauses)"
 	pure $ ELam body
 
-expRec :: State -> Parser Exp
-expRec st = do
-	$(FP.string "rec"); identEnd
+expSig :: State -> Parser Exp
+expSig st = do
+	$(FP.string "sig"); identEnd
 	body <- cut
 		(clauseBlock st $ spanned . decl)
-		$ "expected record body (a block of declarations)"
-	pure $ ERec body
+		$ "expected signature body (a block of declarations)"
+	pure $ ESig body
 
 expDot :: State -> Parser Exp
 expDot st = do
@@ -291,7 +291,7 @@ exp1 st =
 	fmap snd (expParen st) <|>
 	expLet st <|>
 	expLam st <|>
-	expRec st <|>
+	expSig st <|>
 	expDot st
 
 var :: Parser Var

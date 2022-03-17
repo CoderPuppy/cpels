@@ -10,7 +10,7 @@ data Exp
 	= EOp [Spanned Operand]
 	| ELet [Spanned Decl] (Spanned Exp)
 	| ELam [Spanned Clause]
-	| ERec [Spanned Decl]
+	| ESig [Spanned Decl]
 	| ELabel (Spanned Name)
 	| EInaccessible (Spanned Exp)
 	| ETyped (Spanned Exp) (Spanned Exp)
