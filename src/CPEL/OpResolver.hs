@@ -5,94 +5,82 @@ import Prelude hiding (sequence)
 import Control.Applicative
 import Control.Arrow
 import Control.Monad hiding (sequence)
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Reader (ReaderT(ReaderT, runReaderT))
 import Data.Either.Combinators (fromRight')
-import Data.Foldable
 import Data.List
-import Data.Map qualified as M
 import Data.Maybe
 import Data.Set qualified as S
-import Data.Traversable hiding (sequence)
+import Data.Bifunctor hiding (first, second)
 
 import CPEL.Types
 import CPEL.CST qualified as CST
 import CPEL.Trie qualified as Trie
 
-data ElabM a
-instance Functor ElabM
-instance Applicative ElabM
-instance Monad ElabM
-instance MonadFail ElabM
-data Tm
-data Tp
-data Tac a = Tac
-	{ _tacName :: String
-	, _tacImpl :: a
-	}
-instance Show (Tac a) where
-	showsPrec d (Tac name _) = showParen (d > 10) $
-		showString "Tac " . showsPrec 11 name
-type SynTac = Tac (ElabM (Tm, Tp))
-type ChkTac = Tac (Tp -> ElabM Tm)
-
-getPrecedence :: ElabM (Trie.Trie NamePiece [S.Set Name])
-getPrecedence = undefined
-synOp ::
-	Spanned NamePart ->
-	[(Spanned ChkTac, Spanned NamePart)] ->
-	Maybe (Spanned Idx) ->
-	SynTac
-synOp = undefined
-synAp :: Spanned SynTac -> Spanned ChkTac -> SynTac
-synAp = undefined
-chkSyn :: SynTac -> ChkTac
-chkSyn = undefined
+data Syn s c
+	= SynOp
+		(Spanned NamePart)
+		[(Spanned (Chk s c), Spanned NamePart)]
+		(Maybe (Spanned Idx))
+	| SynExp s
+	| SynAp (Spanned (Syn s c)) (Spanned (Chk s c))
+	deriving (Show)
+instance Bifunctor Syn where
+	bimap ms mc (SynOp head parts index) = SynOp head (fmap (first $ fmap $ bimap ms mc) parts) index
+	bimap ms mc (SynExp s) = SynExp $ ms s
+	bimap ms mc (SynAp f a) = SynAp (fmap (bimap ms mc) f) (fmap (bimap ms mc) a)
+data Chk s c
+	= ChkExp c
+	| ChkSyn (Syn s c)
+	deriving (Show)
+instance Bifunctor Chk where
+	bimap ms mc (ChkExp c) = ChkExp $ mc c
+	bimap ms mc (ChkSyn s) = ChkSyn $ bimap ms mc s
 
 type Env = Trie.Trie NamePiece [S.Set Name]
-data OpFrame = OpFrame
+data OpFrame s c = OpFrame
 	{ _ofrHead :: Spanned NamePart
-	, _ofrParts :: List0 (Spanned (ElabM ChkTac), Spanned NamePart)
-	, _ofrRest :: Either NamePart (List0 (Spanned (ElabM ChkTac)))
+	, _ofrParts :: List0 (Spanned (Chk s c), Spanned NamePart)
+	, _ofrRest :: Either NamePart (List0 (Spanned (Chk s c)))
 	, _ofrIndex :: Maybe (Spanned Idx)
 	}
-type ExpFrame = (Spanned (ElabM SynTac), List0 (Spanned (ElabM ChkTac)))
-type Frame = Either OpFrame ExpFrame
-type Stack = List0 Frame
-data Slice = Slice
+data ExpFrame s c = ExpFrame
+	{ _efrHead :: Spanned (Syn s c)
+	, _efrArgs :: List0 (Spanned (Chk s c))
+	}
+type Frame s c = Either (OpFrame s c) (ExpFrame s c)
+type Stack s c = List0 (Frame s c)
+data Slice s c = Slice
 	{ _slExpName :: Maybe Name
-	, _slExp :: Spanned (ElabM SynTac)
-	, _slStack :: Stack
+	, _slExp :: Spanned (Syn s c)
+	, _slStack :: Stack s c
 	}
 
-ofrName :: OpFrame -> Name
+ofrName :: OpFrame s c -> Name
 ofrName OpFrame{..} = concat
 	[ snd _ofrHead
 	, reverse _ofrParts >>= snd . snd
 	, either id (const []) _ofrRest ]
 
-ofrSliceName :: OpFrame -> Maybe Name
+ofrSliceName :: OpFrame s c -> Maybe Name
 ofrSliceName OpFrame{ _ofrParts = [], _ofrRest = rest }
 	| either null (const True) rest = Nothing
 ofrSliceName ofr = Just $ ofrName ofr
 
-ofrPlace :: OpFrame -> Int
+ofrPlace :: OpFrame s c -> Int
 ofrPlace OpFrame{..} = length _ofrHead + sum (fmap (length . snd) _ofrParts)
 
 allows :: Env -> Name -> Int -> Name -> Bool
 allows env outer i inner =
 	S.member inner $ (!! i) $ fromJust $ Trie.lookup outer env
 
-synAps ::
-	Applicative f =>
-	Spanned (f SynTac) ->
-	List0 (Spanned (f ChkTac)) ->
-	Spanned (f SynTac)
-synAps = foldr \a@(Span _ e, _) f@(Span s _, _) ->
-	(Span s e, liftA2 synAp (sequenceA f) (sequenceA a))
+buildAps ::
+	Spanned (Syn s c) ->
+	List0 (Spanned (Chk s c)) ->
+	Spanned (Syn s c)
+buildAps = foldr \a@(Span _ e, _) f@(Span s _, _) ->
+	(Span s e, SynAp f a)
 
-synOpFr :: OpFrame -> Spanned (ElabM SynTac)
-synOpFr OpFrame{..} = synAps core $ fromRight' _ofrRest
+buildOpFr :: OpFrame s c -> Spanned (Syn s c)
+buildOpFr OpFrame{..} = buildAps core $ fromRight' _ofrRest
 	where
 		core = (
 				Span (spanStart $ fst _ofrHead) $
@@ -100,29 +88,27 @@ synOpFr OpFrame{..} = synAps core $ fromRight' _ofrRest
 					case _ofrParts of
 						[] -> spanEnd $ fst _ofrHead
 						parts | (_, (Span _ e, _)) <- last parts -> e,
-				do
-					parts <- for _ofrParts \((span, e), part) ->
-						fmap ((, part) . (span, )) e
-					pure $ synOp _ofrHead parts _ofrIndex
+				SynOp _ofrHead _ofrParts _ofrIndex
 			)
 
-synFrame :: Frame -> Spanned (ElabM SynTac)
-synFrame = either synOpFr (uncurry synAps)
+buildFrame :: Frame s c -> Spanned (Syn s c)
+buildFrame (Left ofr) = buildOpFr ofr
+buildFrame (Right (ExpFrame head args)) = buildAps head args
 
-startSlice :: Stack -> Maybe Slice
+startSlice :: Stack s c -> Maybe (Slice s c)
 startSlice (Left ofr@OpFrame{ _ofrRest = Right args, .. }:stack)
 	= Just Slice
 		{ _slExpName = ofrSliceName ofr
-		, _slExp = synOpFr ofr
+		, _slExp = buildOpFr ofr
 		, _slStack = stack }
-startSlice (Right (f, args):stack)
+startSlice (Right (ExpFrame f args):stack)
 	= Just Slice
 		{ _slExpName = Nothing
-		, _slExp = synAps f args
+		, _slExp = buildAps f args
 		, _slStack = stack }
 startSlice _ = Nothing
 
-extendSlice :: Env -> Slice -> Maybe Slice
+extendSlice :: Env -> Slice s c -> Maybe (Slice s c)
 extendSlice env Slice
 	{ _slExpName = Just nameE
 	, _slStack = Left ofr@OpFrame { _ofrRest = Left [""] }:_ }
@@ -134,9 +120,9 @@ extendSlice env Slice
 	, _slStack = Left ofr@OpFrame{ _ofrRest = Left [""] }:stack }
 	= Just Slice
 		{ _slExpName = Just $ ofrName ofr
-		, _slExp = synOpFr $ ofr
+		, _slExp = buildOpFr $ ofr
 				{ _ofrParts =
-						(second (fmap chkSyn) e, (Span pos pos, [""])):_ofrParts ofr
+						(second ChkSyn e, (Span pos pos, [""])):_ofrParts ofr
 				, _ofrRest = Right [] }
 		, _slStack = stack }
 extendSlice env Slice
@@ -144,30 +130,29 @@ extendSlice env Slice
 	, _slStack = Left ofr@OpFrame{ _ofrRest = Right args }:stack }
 	= Just Slice
 		{ _slExpName = ofrSliceName ofr
-		, _slExp = synOpFr $ ofr
-				{ _ofrRest = Right $ second (fmap chkSyn) e:args }
+		, _slExp = buildOpFr $ ofr
+				{ _ofrRest = Right $ second ChkSyn e:args }
 		, _slStack = stack }
 extendSlice env Slice
 	{ _slExp = e
-	, _slStack = Right (f, args):stack }
+	, _slStack = Right (ExpFrame f args):stack }
 	= Just Slice
 		{ _slExpName = Nothing
-		, _slExp = synAps f args
+		, _slExp = buildAps f args
 		, _slStack = stack }
 extendSlice _ _ = Nothing
 
-slices :: Env -> Stack -> [Slice]
+slices :: Env -> Stack s c -> [Slice s c]
 slices env = maybeToList . startSlice >=> go
 	where go slice = slice:maybe [] go (extendSlice env slice)
 
-lastSlice :: Env -> Stack -> Maybe Slice
+lastSlice :: Env -> Stack s c -> Maybe (Slice s c)
 lastSlice env = fmap go . startSlice
 	where go slice = maybe slice go $ extendSlice env slice
 
-processOperand :: Stack -> Spanned CST.Operand -> ElabM [Stack]
-processOperand stack op = getPrecedence >>=
-		fmap join . sequenceA . fmap ($ (stack, op)) . rules
-	where rules env =
+processOperand :: Env -> Stack s c -> Spanned (Either CST.Var (s, c)) -> Either String [Stack s c]
+processOperand env stack op = fmap join $ sequenceA $ fmap ($ (stack, op)) rules
+	where rules =
 		[ \case --start op
 			(stack, (_, Left (CST.Var part idx))) -> pure do
 				(rest, _) <- Trie.toList $ Trie.descend (snd part) env
@@ -188,11 +173,11 @@ processOperand stack op = getPrecedence >>=
 				, maybe True (allows env (ofrName ofr) (ofrPlace ofr)) $ _slExpName sl
 				-> do
 					idx' <- case (idx, _ofrIndex ofr) of
-						(Just _, Just _) -> fail "kjfdsa"
+						(Just _, Just _) -> Left "kjfdsa"
 						(a, b) -> pure $ a <|> b
 					pure $ pure $ (:stack) $ Left $ ofr
 						{ _ofrParts = (:_ofrParts ofr) $
-								(second (fmap chkSyn) (_slExp sl), (span, part))
+								(second ChkSyn (_slExp sl), (span, part))
 						, _ofrRest = case drop (length part) rest of
 								[] -> Right []
 								rest' -> Left rest'
@@ -207,7 +192,7 @@ processOperand stack op = getPrecedence >>=
 				let pos = spanStart $ fst $ _slExp sl
 				pure $ (:stack) $ Left OpFrame
 					{ _ofrHead = (Span pos pos, [""])
-					, _ofrParts = [(second (fmap chkSyn) (_slExp sl), part)]
+					, _ofrParts = [(second ChkSyn (_slExp sl), part)]
 					, _ofrRest = case rest of
 							[] -> Right []
 							rest -> Left rest
@@ -215,28 +200,21 @@ processOperand stack op = getPrecedence >>=
 			_ -> pure empty
 
 		, \case -- embed expression
-			(stack@(Left OpFrame{ _ofrRest = Left _ }:_), (span, Right e)) ->
-				pure $ pure $ Right ((span, synExp e), []):stack
-			(Left ofr@OpFrame{ _ofrRest = Right args }:stack, (span, Right e)) ->
+			(stack@(Left OpFrame{ _ofrRest = Left _ }:_), (span, Right (syne, _))) ->
+				pure $ pure $ Right (ExpFrame (span, SynExp syne) []):stack
+			(Left ofr@OpFrame{ _ofrRest = Right args }:stack, (span, Right (_, chke))) ->
 				pure $ pure $ (:stack) $ Left $ ofr
-					{ _ofrRest = Right $ (span, chkExp e):args }
-			(Right (f, args):stack, (span, Right e)) ->
-				pure $ pure $ Right (f, (span, chkExp e):args):stack
+					{ _ofrRest = Right $ (span, ChkExp chke):args }
+			(Right (ExpFrame f args):stack, (span, Right (_, chke))) ->
+				pure $ pure $ Right (ExpFrame f ((span, ChkExp chke):args)):stack
 		]
 
-synExp :: CST.Exp -> ElabM SynTac
-synExp (CST.EOp ops) = do
+buildOps :: Env -> [Spanned (Either CST.Var (s, c))] -> Either String [Spanned (Syn s c)]
+buildOps env ops = do
 	stacks <- foldl
 		(\stacks op ->
-			stacks >>= fmap join . sequenceA . fmap (flip processOperand op))
+			stacks >>= fmap join . sequenceA . fmap (flip (processOperand env) op))
 		(pure []) ops
-	env <- getPrecedence
-	exps <- sequenceA do
+	pure do
 		Slice { _slExp = e, _slStack = [] } <- mapMaybe (lastSlice env) stacks
-		pure $ sequenceA e
-	case exps of
-		[e] -> pure $ snd e
-		_ -> fail $ show exps
-
-chkExp :: CST.Exp -> ElabM ChkTac
-chkExp = error "TODO"
+		pure e
