@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 98b7f6a4e919e4cbbf3fcdf888238d8c6d84daaa04aa52a8f29c31c4d8c9487d
+-- hash: 8730158af65829b7409fa1f887546f355eb8524f93a2c7012802dd8d1d8fd928
 
 name:           CPELS
 version:        0.1.0.0
@@ -28,8 +28,10 @@ source-repository head
 library
   exposed-modules:
       CPEL.CST
+      CPEL.Elaborator
       CPEL.OpResolver
       CPEL.Parser
+      CPEL.SynSem
       CPEL.Trie
       CPEL.Types
   other-modules:
